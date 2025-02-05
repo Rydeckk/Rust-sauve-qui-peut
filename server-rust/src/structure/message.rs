@@ -1,3 +1,5 @@
+use super::player::Player;
+
 #[derive(serde::Serialize)]
 pub enum JsonWrapper {
     #[serde(rename = "RegisterTeamResult")]
@@ -37,9 +39,12 @@ pub fn register_team_result(result: Result<(u8, String),RegistrationError>) -> S
     serde_json::to_string(&message_wrapped).unwrap()
 }
 
-pub fn subcribe_player_result(result: Result<(),RegistrationError>) -> String {
+pub fn subcribe_player_result(result: Result<Player,RegistrationError>) -> String {
     let message_wrapped = match result {
-        Ok(()) => JsonWrapper::SubscribePlayerResult(SubscribePlayerResult::Ok),
+        Ok(player) => {
+            player.get_radar_view();
+            JsonWrapper::SubscribePlayerResult(SubscribePlayerResult::Ok)
+        },
         Err(error) => JsonWrapper::SubscribePlayerResult(SubscribePlayerResult::Err(error))
     };
 

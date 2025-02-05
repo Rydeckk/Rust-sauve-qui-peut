@@ -43,15 +43,16 @@ impl TeamManager {
         }
     }
 
-    fn register_player(&mut self, access_key: String, name: String) -> Result<(),RegistrationError> {
+    fn register_player(&mut self, access_key: String, name: String) -> Result<(Player),RegistrationError> {
         if self.teams.contains_key(&access_key) {
             let team_players = &self.teams.get(&access_key).unwrap().players;
             if team_players.len() >= MAX_PLAYER.into() {
                 return Err(RegistrationError::TooManyPlayers);
             }
 
-            self.teams.get_mut(&access_key).unwrap().players.push(Player {name});
-            Ok(())
+            let player = Player::new(name);
+            self.teams.get_mut(&access_key).unwrap().players.push(player.clone());
+            Ok(player)
         } else {
             Err(RegistrationError::InvalidRegistrationToken)
         }
@@ -74,7 +75,7 @@ impl TeamCommand {
         let mut manager = team_manager.lock().unwrap(); 
 
         let message = match manager.register_player(registration_token, name_player) {
-            Ok(()) => subcribe_player_result(Ok(())),
+            Ok(player) => subcribe_player_result(Ok(player)),
             Err(error) => subcribe_player_result(Err(error))
         };
 
