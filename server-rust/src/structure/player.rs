@@ -1,6 +1,3 @@
-use crate::shared::libs::*;
-use crate::send_to_client;
-use crate::shared::utils::generate_random_number;
 use super::maze::*;
 
 pub const DISTANCE: i32 = 3;
@@ -9,30 +6,39 @@ pub const SIZE_VIEW: usize = 7;
 #[derive(Clone, Debug)]
 pub struct Player {
     name: String,
-    position: Point
+    position: Point,
+    challenge_actif: bool
 }
 
 impl Player {
     pub fn new(name: String) -> Self {
-        let mut x = generate_random_number(RangeInclusive::new(0, WIDTH as i32 - 1));
-        let mut y = generate_random_number(RangeInclusive::new(0, HEIGHT as i32 - 1));
-
-        if MAZE[x as usize][y as usize] != " " || (x % 2 == 0 || y % 2 == 0) {
-            while MAZE[x as usize][y as usize] != " " || (x % 2 == 0 || y % 2 == 0) {
-                x = generate_random_number(RangeInclusive::new(0, WIDTH as i32 - 1));
-                y = generate_random_number(RangeInclusive::new(0, HEIGHT as i32 - 1));
-            }
-        }
         Self {
             name: name,
-            position: Point { 
-                x: x, 
-                y: y
-            }
+            position: Point {
+                x: 3,
+                y: 3
+            },
+            challenge_actif: false
         }
     }
 
-    pub fn get_radar_view(self) {
+    pub fn get_position(self) -> Point {
+        self.position
+    }
+
+    pub fn set_position(&mut self, new_position: Point) {
+        self.position = new_position;
+    }
+
+    pub fn get_is_challenge_actif(self) -> bool {
+        self.challenge_actif
+    }
+
+    pub fn set_is_challenge_actif(&mut self, is_challenge_actif: bool) {
+        self.challenge_actif = is_challenge_actif;
+    }
+
+    pub fn get_radar_view(self) -> String {
         let mut radar_view: [[&str; SIZE_VIEW]; SIZE_VIEW] = [["#";SIZE_VIEW];SIZE_VIEW];
 
         for (i, row) in radar_view.iter_mut().enumerate() {
@@ -55,10 +61,9 @@ impl Player {
             row.copy_from_slice(&row_to_add);
         }
 
-        radar_view[3][3] = "H";
-
-        for row in radar_view.iter() {
-            println!("{:?}", row.concat()); 
-        }
+        radar_view.iter()
+            .map(|row| row.join("")) 
+            .collect::<Vec<_>>() 
+            .join("")
     }
 }
