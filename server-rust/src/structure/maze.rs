@@ -1,4 +1,6 @@
-use super::{action::{ActionError, RelativeDirection}, challenge::ChallengePosition, player::Player};
+use commun::structs::{ActionError, RelativeDirection};
+
+use super::player::Player;
 
 pub const WIDTH: usize = 7;
 pub const HEIGHT: usize = 7;
@@ -14,8 +16,6 @@ pub const MAZE: [[&str; WIDTH]; HEIGHT] = [
 ];
 
 const WALLS: [&str; 3] = ["-","|","•"];
-const XPOSCHALLENGE: i32 = 3;
-const YPOSCHALLENGE: i32 = 5;
 
 #[derive(Clone, Debug)]
 pub struct Point {

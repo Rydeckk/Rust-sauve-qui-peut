@@ -1,6 +1,8 @@
-use crate::shared::{libs::*, utils::*};
+use commun::{*,utils::generate_acess_key, structs::RegistrationError};
+
 use crate::send_to_client;
-use super::message::{register_team_result, subcribe_player_result, RegistrationError};
+
+use super::message::{register_team_result, subcribe_player_result};
 use super::player::Player;
 
 const MAX_PLAYER: u8 = 3;
@@ -43,7 +45,7 @@ impl TeamManager {
         }
     }
 
-    fn register_player(&mut self, access_key: String, name: String) -> Result<(Player),RegistrationError> {
+    fn register_player(&mut self, access_key: String, name: String) -> Result<Player,RegistrationError> {
         if self.teams.contains_key(&access_key) {
             let team_players = &self.teams.get(&access_key).unwrap().players;
             if team_players.len() >= MAX_PLAYER.into() {

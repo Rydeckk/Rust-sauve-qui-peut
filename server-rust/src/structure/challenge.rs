@@ -1,9 +1,6 @@
-use super::{action::ActionError, maze::Point, player::Player};
+use commun::structs::ActionError;
 
-#[derive(serde::Serialize)]
-pub enum Challenge {
-    SecretModulo(u64)
-}
+use super::{maze::Point, player::Player};
 
 #[derive(Clone, Debug)]
 pub struct ChallengePosition {
@@ -26,10 +23,6 @@ impl ChallengePosition {
 
     pub fn update_challenge_statut(&mut self, is_finish: bool) {
         self.is_finish = is_finish;
-    }
-
-    pub fn update_challenge_answer(&mut self, answer: String) {
-        self.answer = answer;
     }
 
     pub fn get_challenge_answer(self) -> String {

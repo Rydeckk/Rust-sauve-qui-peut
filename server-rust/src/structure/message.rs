@@ -1,37 +1,6 @@
-use super::{action::ActionError, challenge::{check_is_challenge_position, Challenge, ChallengePosition}, player::Player};
+use commun::{serde_json, structs::{ActionError, Challenge, JsonWrapper, RegisterTeamResult, RegistrationError, SubscribePlayerResult}};
 
-#[derive(serde::Serialize)]
-pub enum JsonWrapper {
-    #[serde(rename = "RegisterTeamResult")]
-    RegisterTeamResult(RegisterTeamResult),
-    SubscribePlayerResult(SubscribePlayerResult),
-    RadarView(String),
-    Challenge(Challenge),
-    ActionError(ActionError)
-}
-
-#[derive(serde::Serialize)]
-pub enum RegistrationError {
-    AlreadyRegistered, 
-    InvalidName, 
-    InvalidRegistrationToken, 
-    TooManyPlayers
-}
-
-#[derive(serde::Serialize)]
-pub enum RegisterTeamResult {
-    Ok {
-        expected_players: u8,
-        registration_token: String
-    },
-    Err(RegistrationError)
-}
-
-#[derive(serde::Serialize)]
-pub enum SubscribePlayerResult {
-    Ok,
-    Err(RegistrationError)
-}
+use super::player::Player;
 
 pub fn register_team_result(result: Result<(u8, String),RegistrationError>) -> String {
     let message_wrapped = match result {

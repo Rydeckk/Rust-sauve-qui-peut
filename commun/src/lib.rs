@@ -7,5 +7,9 @@ pub use {
     std::collections::HashMap,
     rand::{thread_rng, Rng},
     rand::distributions::Alphanumeric,
-    std::ops::RangeInclusive
+    std::ops::RangeInclusive,
+    serde_json
 };
+
+pub mod structs;
+pub mod utils;

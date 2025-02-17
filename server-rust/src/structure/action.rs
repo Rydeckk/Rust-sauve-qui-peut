@@ -1,31 +1,15 @@
-use crate::{send_to_client, shared::libs::*};
+use commun::{structs::{ Action, RelativeDirection}, *};
 
+use crate::send_to_client;
 use super::{challenge::{check_all_condition_challenge, check_is_challenge_position, ChallengePosition}, maze::{check_movement_possible, Point}, message::action_result, player::Player};
 
-#[derive(Serialize, Deserialize)]
-pub enum RelativeDirection {
-    Front, 
-    Right, 
-    Back, 
-    Left
+pub trait ActionFunction {
+    fn process_direction(direction: RelativeDirection, player: Arc<Mutex<Player>>, stream: TcpStream, challenge: Arc<Mutex<ChallengePosition>>);
+    fn process_challenge(answer: String, player: Arc<Mutex<Player>>, stream: TcpStream, challenge: Arc<Mutex<ChallengePosition>>);
+    fn process(action: Action, stream: TcpStream, player: Arc<Mutex<Player>>, challenge: Arc<Mutex<ChallengePosition>>);
 }
 
-#[derive(Serialize, Deserialize)]
-pub enum Action {
-    MoveTo(RelativeDirection),
-    SolveChallenge{ answer: String}
-}
-
-#[derive(serde::Serialize)]
-pub enum ActionError { 
-    CannotPassThroughWall, 
-    CannotPassThroughOpponent, 
-    NoRunningChallenge, 
-    SolveChallengeFirst, 
-    InvalidChallengeSolution 
-}
-
-impl Action {
+impl ActionFunction for Action {
     fn process_direction(direction: RelativeDirection, player: Arc<Mutex<Player>>, stream: TcpStream, challenge: Arc<Mutex<ChallengePosition>>) {
         let mut player = player.lock().unwrap();
         let challenge = challenge.lock().unwrap();
@@ -62,7 +46,7 @@ impl Action {
         send_to_client(stream,message);
     }
 
-    pub fn process(action: Action, stream: TcpStream, player: Arc<Mutex<Player>>, challenge: Arc<Mutex<ChallengePosition>>) {
+    fn process(action: Action, stream: TcpStream, player: Arc<Mutex<Player>>, challenge: Arc<Mutex<ChallengePosition>>) {
         match action {
             Action::MoveTo(direction) => Action::process_direction(direction, player, stream, challenge),
             Action::SolveChallenge { answer } => Action::process_challenge(answer, player, stream, challenge),

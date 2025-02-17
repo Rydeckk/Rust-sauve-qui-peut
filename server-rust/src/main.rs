@@ -1,11 +1,8 @@
 mod structure;
-mod shared;
 
-use crate::shared::libs::*;
-use structure::challenge::ChallengePosition;
-use structure::player::Player;
-use structure::team::*;
-use structure::command::*;
+use commun::structs::Command;
+use commun::*;
+use structure::{team::*, player::Player, challenge::ChallengePosition, command::CommandFunction};
 
 fn send_to_client(mut stream: TcpStream, message: String) {
     let message_convert = message.as_bytes();

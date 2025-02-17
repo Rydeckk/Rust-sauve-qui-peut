@@ -1,4 +1,4 @@
-use super::libs::*;
+use super::*;
 
 pub fn generate_acess_key() -> String {
     let rand_string: String = thread_rng()
