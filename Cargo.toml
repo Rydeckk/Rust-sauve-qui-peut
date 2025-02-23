@@ -3,6 +3,6 @@ members = [
     "client",
     "server-rust",
     "commun",
-    "maze-solver"
+    "maze_engine"
 ]
 resolver = "2"

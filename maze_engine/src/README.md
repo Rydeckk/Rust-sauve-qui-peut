@@ -1,4 +1,4 @@
-# Crate `maze-solver`
+# Crate `maze_engine`
 
 Ce crate gère la logique du moteur de jeu pour le projet **Rust-sauve-qui-peut**.  
 Il inclut :
@@ -17,16 +17,16 @@ Ce crate est utilisé en interne dans le projet et n'est pas prévu pour être i
 Si besoin d'utiliser ce crate ailleurs :
 ```toml
 [dependencies]
-maze-solver = { path = "../maze-solver" }
+maze_engine = { path = "../maze_engine" }
 ```
 
 ### **Import des modules**
 ```rust
-use maze-solver::maze::Maze;
-use maze-solver::movement::{Player, can_move, move_player};
-use maze-solver::challenge::ChallengeManager;
-use maze-solver::scoring::ScoreManager;
-use maze-solver::errors::ActionError;
+use maze_engine::maze::Maze;
+use maze_engine::movement::{Player, can_move, move_player};
+use maze_engine::challenge::ChallengeManager;
+use maze_engine::scoring::ScoreManager;
+use maze_engine::errors::ActionError;
 ```
 
 ---
