@@ -1,9 +1,6 @@
 // decodage.rs
 
-use serde_json;
-use std::io::{self, Read};
-use std::convert::TryInto;
-
+use super::*;
 use crate::structs::JsonWrapper; // On suppose que JsonWrapper est défini dans le module structs
 
 /// Erreur de protocole regroupant les erreurs d'E/S et de désérialisation.
@@ -97,6 +94,69 @@ pub fn decode_b64(s: &str) -> Result<Vec<u8>, String> {
         }
     }
     Ok(output)
+}
+
+pub fn decode_radar_view_binary(binary_radar_view: Vec<u8>) -> [[char; 7]; 7] {
+    let mut radar_view = [['•'; 7]; 7]; // Initialise la grille avec des espaces
+
+    fn decode_wall(value: u8, direction: &str) -> char {
+        let wall: char = match direction {
+            "hori" => '-',
+            "vert" => '|',
+            _ => '#'
+        };
+
+        match value {
+            0b00 => '#',
+            0b10 => wall,
+            0b01 => ' ',
+            _ => ' ',
+        }
+    }
+
+    fn decode_cell(value: u8) -> char {
+        match value {
+            0b0000 => ' ',
+            0b1000 => '*',
+            _ => ' ',
+        }
+    }
+
+    //horizontaux
+    let horiz = u32::from_le_bytes([binary_radar_view[2], binary_radar_view[1], binary_radar_view[0], 0]); 
+    let mut bit_index = 0;
+    for column in (0..7).step_by(2) {
+        for row in (1..7).step_by(2) {
+            let val = ((horiz >> bit_index) & 0b11) as u8;
+            radar_view[row][column] = decode_wall(val, "hori");
+            bit_index += 2;
+        }
+    }
+
+    //Verticaux
+    let vert = u32::from_le_bytes([binary_radar_view[5], binary_radar_view[4], binary_radar_view[3], 0]); 
+    bit_index = 0;
+    for row in (0..7).step_by(2) {
+        for column in (1..7).step_by(2) {
+            let val = ((vert >> bit_index) & 0b11) as u8;
+            radar_view[row][column] = decode_wall(val, "vert");
+            bit_index += 2;
+        }
+    }
+
+    //Cells
+    let cells = u64::from_le_bytes([binary_radar_view[10], binary_radar_view[9], binary_radar_view[8], binary_radar_view[7], binary_radar_view[6], 0, 0, 0]); 
+    bit_index = 0;
+    for column in (1..7).step_by(2) {
+        for row in (1..7).step_by(2) {
+            let val = ((cells >> bit_index) & 0b1111) as u8;
+            radar_view[row][column] = decode_cell(val);
+            bit_index += 4;
+        }
+    }
+
+    radar_view
+
 }
 
 #[cfg(test)]

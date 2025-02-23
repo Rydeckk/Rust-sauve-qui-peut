@@ -15,7 +15,7 @@ pub enum Action {
     SolveChallenge{ answer: String}
 }
 
-#[derive(serde::Serialize)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum ActionError { 
     CannotPassThroughWall, 
     CannotPassThroughOpponent, 
@@ -25,15 +25,14 @@ pub enum ActionError {
 }
 
 //Challenge
-
-#[derive(serde::Serialize)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum Challenge {
     SecretModulo(u64)
 }
 
 //Message
 
-#[derive(serde::Serialize)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum JsonWrapper {
     RegisterTeamResult(RegisterTeamResult),
     SubscribePlayerResult(SubscribePlayerResult),
@@ -42,7 +41,7 @@ pub enum JsonWrapper {
     ActionError(ActionError)
 }
 
-#[derive(serde::Serialize)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum RegistrationError {
     AlreadyRegistered, 
     InvalidName, 
@@ -50,7 +49,7 @@ pub enum RegistrationError {
     TooManyPlayers
 }
 
-#[derive(serde::Serialize)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum RegisterTeamResult {
     Ok {
         expected_players: u8,
@@ -59,7 +58,7 @@ pub enum RegisterTeamResult {
     Err(RegistrationError)
 }
 
-#[derive(serde::Serialize)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum SubscribePlayerResult {
     Ok,
     Err(RegistrationError)

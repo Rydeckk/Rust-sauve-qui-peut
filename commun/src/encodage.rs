@@ -1,9 +1,7 @@
 // encodage.rs
 
-use serde_json;
-use std::io::{self, Write};
-
-use crate::structs::JsonWrapper; // On suppose que JsonWrapper est défini dans le module structs
+use super::*;
+use crate::{structs::JsonWrapper, utils::debug_binary}; // On suppose que JsonWrapper est défini dans le module structs
 
 /// Erreur de protocole regroupant les erreurs d'E/S et de sérialisation.
 #[derive(Debug)]
@@ -102,6 +100,70 @@ pub fn encode_b64(data: &[u8]) -> String {
     output
 }
 
+pub fn encode_radar_view_binary(radar_view: [[char; 7]; 7]) -> Vec<u8> {
+    let mut binary_radar_view = Vec::new();
+
+    fn encode_wall(c: char) -> u8 {
+        match c {
+            '#' => 0b00,
+            '|' | '-' => 0b10,
+            ' ' => 0b01,
+            _ => 0b00,
+        }
+    }
+
+    fn encode_cell(c: char) -> u8 {
+        match c {
+            ' ' => 0b0000,
+            '*' => 0b1000,
+            _ => 0b0000
+        }
+    }
+
+    // Horizontal
+    let mut horiz: u32 = 0;
+    let mut bit_index = 0;
+    for row in (0..7).step_by(2) {
+        for column in (1..7).step_by(2) {
+            let val = encode_wall(radar_view[row][column]);
+            horiz |= (val as u32) << bit_index;
+            bit_index += 2;
+        }
+    };
+
+    binary_radar_view.extend_from_slice(&horiz.to_le_bytes()[..3]);
+
+    //Vertical
+    let mut vert: u32 = 0;
+    bit_index = 0;
+    for column in (0..7).step_by(2) {
+        for row in (1..7).step_by(2) {
+            let val = encode_wall(radar_view[row][column]);
+            vert |= (val as u32) << bit_index;
+            bit_index += 2;
+        }
+    };
+
+    binary_radar_view.extend_from_slice(&vert.to_le_bytes()[..3]);
+
+    //Cell
+    let mut cells: u64 = 0;
+    bit_index = 0;
+    for column in (1..7).step_by(2) {
+        for row in (1..7).step_by(2) {
+            let val = encode_cell(radar_view[column][row]);
+            cells |= (val as u64) << bit_index;
+            bit_index += 4;
+        }
+    }; 
+
+    binary_radar_view.extend_from_slice(&cells.to_le_bytes()[..5]);
+
+    println!("{}", debug_binary(&binary_radar_view));
+    binary_radar_view
+
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -125,10 +187,6 @@ mod tests {
         // Vérifie que le JSON désérialisé correspond au message original.
         let decoded_message: JsonWrapper = serde_json::from_slice(payload_bytes).expect("Désérialisation OK");
         assert_eq!(decoded_message, message);
-    }
-    pub fn encode_radar_view_to_b64(view: &RadarView) -> String {
-        let binary = encode_radar_view_to_binary(view);
-        encode_b64(&binary)
     }
 
     #[test]
