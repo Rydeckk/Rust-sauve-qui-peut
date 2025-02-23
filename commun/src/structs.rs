@@ -15,20 +15,21 @@ pub enum Action {
     SolveChallenge{ answer: String}
 }
 
-#[derive(serde::Serialize)]
-pub enum ActionError { 
-    CannotPassThroughWall, 
-    CannotPassThroughOpponent, 
-    NoRunningChallenge, 
-    SolveChallengeFirst, 
-    InvalidChallengeSolution 
+#[derive(Debug, serde::Serialize, PartialEq)]
+pub enum ActionError {
+    CannotPassThroughWall,
+    CannotPassThroughOpponent,
+    NoRunningChallenge,
+    SolveChallengeFirst,
+    InvalidChallengeSolution
 }
 
 //Challenge
 
 #[derive(serde::Serialize)]
 pub enum Challenge {
-    SecretModulo(u64)
+    SecretModulo(u64),
+    SOS,
 }
 
 //Message
