@@ -1,86 +1,29 @@
-use commun::serde_json;
-use serde::{Deserialize, Serialize};
-use std::io::{Read, Result, Write};
-use std::net::TcpStream;
+// COMMENT trying to refacto with common struct but not work for the moment
 
-#[derive(Serialize, Deserialize, Debug)]
-struct RegisterTeam {
-    name: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct RegisterTeamWrapper {
-    RegisterTeam: RegisterTeam,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct SubscribePlayer {
-    name: String,
-    registration_token: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct SubscribePlayerWrapper {
-    SubscribePlayer: SubscribePlayer,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum RegistrationError {
-    AlreadyRegistered,
-    InvalidName,
-    InvalidRegistrationToken,
-    TooManyPlayers,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum RegisterTeamResult {
-    Ok {
-        expected_players: u8,
-        registration_token: String,
+use commun::{
+    serde_json,
+    structs::{
+        Action, RegisterTeam, RegisterTeamResult, RegisterTeamWrapper, RelativeDirection,
+        SubscribePlayer, SubscribePlayerResult, SubscribePlayerWrapper,
     },
-    Err(RegistrationError),
-}
+};
+use serde::{Deserialize, Serialize};
+use std::{
+    io::{Read, Write},
+    net::TcpStream,
+};
 
-#[derive(Serialize, Deserialize, Debug)]
-pub enum SubscribePlayerResult {
-    Ok,
-    Err(RegistrationError),
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum Action {
-    MoveTo(RelativeDirection),
-    SolveChallenge { answer: String },
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum RelativeDirection {
-    Left,
-    Right,
-    Up,
-    Down,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum ActionError {
-    CannotPassThroughWall,
-    CannotPassThroughOpponent,
-    NoRunningChallenge,
-    SolveChallengeFirst,
-    InvalidChallengeSolution,
-}
-
-struct Client {
+pub struct Client {
     stream: TcpStream,
 }
 
 impl Client {
-    fn new(server: &str) -> Result<Self> {
+    pub fn new(server: &str) -> Result<Self> {
         let stream = TcpStream::connect(server)?;
         Ok(Client { stream })
     }
 
-    fn send_message<T: Serialize>(&mut self, message: &T) -> Result<()> {
+    pub fn send_message<T: Serialize>(&mut self, message: &T) -> Result<()> {
         let json = serde_json::to_string(message)?;
         let size = (json.len() as u32).to_le_bytes();
         self.stream.write_all(&size)?;
@@ -88,7 +31,7 @@ impl Client {
         Ok(())
     }
 
-    fn receive_message<T: for<'de> Deserialize<'de>>(&mut self) -> Result<T> {
+    pub fn receive_message<T: for<'de> Deserialize<'de>>(&mut self) -> Result<T> {
         let mut size_buffer = [0; 4];
         self.stream.read_exact(&mut size_buffer)?;
         let size = u32::from_le_bytes(size_buffer);
@@ -101,7 +44,7 @@ impl Client {
         Ok(result)
     }
 
-    fn register_team(&mut self, team_name: &str) -> Result<String> {
+    pub fn register_team(&mut self, team_name: &str) -> Result<String> {
         let registration = RegisterTeamWrapper {
             RegisterTeam: RegisterTeam {
                 name: team_name.to_string(),
@@ -132,7 +75,7 @@ impl Client {
         }
     }
 
-    fn subscribe_player(&mut self, player_name: &str, token: &str) -> Result<()> {
+    pub fn subscribe_player(&mut self, player_name: &str, token: &str) -> Result<()> {
         let subscription = SubscribePlayerWrapper {
             SubscribePlayer: SubscribePlayer {
                 name: player_name.to_string(),
@@ -157,7 +100,7 @@ impl Client {
         }
     }
 
-    fn game_loop(&mut self) -> Result<()> {
+    pub fn game_loop(&mut self) -> Result<()> {
         loop {
             let message: serde_json::Value = self.receive_message()?;
 
@@ -174,7 +117,6 @@ impl Client {
                 self.send_message(&action)?;
             }
 
-            // Check for action errors
             if let Ok(error_message) = self.receive_message::<serde_json::Value>() {
                 if let Some(error) = error_message.get("ActionError") {
                     println!("Received action error: {}", error);
@@ -182,21 +124,4 @@ impl Client {
             }
         }
     }
-}
-
-fn main() -> Result<()> {
-    const SERVER_PORT: u16 = 8778;
-    let server_addr = format!("localhost:{}", SERVER_PORT);
-
-    let mut client = Client::new(&server_addr)?;
-    println!("Connected to server at {}", server_addr);
-
-    let token = client.register_team("rust_warriors")?;
-    println!("Got registration token: {}", token);
-
-    let mut new_lient = Client::new(&server_addr)?;
-    new_lient.subscribe_player("player1", &token)?;
-    new_lient.game_loop()?;
-
-    Ok(())
 }
