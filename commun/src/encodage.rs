@@ -126,6 +126,10 @@ mod tests {
         let decoded_message: JsonWrapper = serde_json::from_slice(payload_bytes).expect("Désérialisation OK");
         assert_eq!(decoded_message, message);
     }
+    pub fn encode_radar_view_to_b64(view: &RadarView) -> String {
+        let binary = encode_radar_view_to_binary(view);
+        encode_b64(&binary)
+    }
 
     #[test]
     fn test_encode_b64() {
