@@ -1,4 +1,4 @@
-use commun::{encodage::{encode_b64, encode_radar_view_binary}, utils::debug_binary};
+use commun::encodage::{encode_b64, encode_radar_view_binary};
 
 use super::maze::*;
 
