@@ -63,11 +63,6 @@ impl Player {
             row.copy_from_slice(&row_to_add);
         }
 
-        println!("{}", radar_view.iter()
-        .map(|row| row.iter().collect::<String>()) // Convertir chaque ligne
-        .collect::<Vec<String>>() // Créer un vecteur de lignes
-        .join("\n"));
-
         let binary_radar_view = encode_radar_view_binary(radar_view);
         
         let encode_radar_view = encode_b64(&binary_radar_view);
