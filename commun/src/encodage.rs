@@ -116,11 +116,12 @@ pub fn encode_radar_view_binary(radar_view: [[char; 7]; 7]) -> Vec<u8> {
         match c {
             ' ' => 0b0000,
             '*' => 0b1000,
-            _ => 0b0000
+            '#' => 0b1111,
+            _ => 0b1111
         }
     }
 
-    // Horizontal
+    //Horizontaux
     let mut horiz: u32 = 0;
     let mut bit_index = 0;
     for row in (0..7).step_by(2) {
@@ -129,37 +130,33 @@ pub fn encode_radar_view_binary(radar_view: [[char; 7]; 7]) -> Vec<u8> {
             horiz |= (val as u32) << bit_index;
             bit_index += 2;
         }
-    };
-
+    }
     binary_radar_view.extend_from_slice(&horiz.to_le_bytes()[..3]);
 
-    //Vertical
+    //Verticaux
     let mut vert: u32 = 0;
     bit_index = 0;
-    for column in (0..7).step_by(2) {
-        for row in (1..7).step_by(2) {
+    for row in (1..7).step_by(2) {
+        for column in (0..7).step_by(2) {
             let val = encode_wall(radar_view[row][column]);
             vert |= (val as u32) << bit_index;
             bit_index += 2;
         }
-    };
-
+    }
     binary_radar_view.extend_from_slice(&vert.to_le_bytes()[..3]);
 
-    //Cell
+    //Cells
     let mut cells: u64 = 0;
     bit_index = 0;
-    for column in (1..7).step_by(2) {
-        for row in (1..7).step_by(2) {
-            let val = encode_cell(radar_view[column][row]);
+    for row in (1..7).step_by(2) { 
+        for column in (1..7).step_by(2) {
+            let val = encode_cell(radar_view[row][column]);
             cells |= (val as u64) << bit_index;
             bit_index += 4;
         }
-    }; 
-
+    }
     binary_radar_view.extend_from_slice(&cells.to_le_bytes()[..5]);
 
-    println!("{}", debug_binary(&binary_radar_view));
     binary_radar_view
 
 }

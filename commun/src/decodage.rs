@@ -97,7 +97,7 @@ pub fn decode_b64(s: &str) -> Result<Vec<u8>, String> {
 }
 
 pub fn decode_radar_view_binary(binary_radar_view: Vec<u8>) -> [[char; 7]; 7] {
-    let mut radar_view = [['•'; 7]; 7]; // Initialise la grille avec des espaces
+    let mut radar_view = [['•'; 7]; 7]; 
 
     fn decode_wall(value: u8, direction: &str) -> char {
         let wall: char = match direction {
@@ -118,15 +118,16 @@ pub fn decode_radar_view_binary(binary_radar_view: Vec<u8>) -> [[char; 7]; 7] {
         match value {
             0b0000 => ' ',
             0b1000 => '*',
-            _ => ' ',
+            0b1111 => '#',
+            _ => '#',
         }
     }
 
-    //horizontaux
-    let horiz = u32::from_le_bytes([binary_radar_view[2], binary_radar_view[1], binary_radar_view[0], 0]); 
+    //Horizontaux
+    let horiz = u32::from_le_bytes([binary_radar_view[0], binary_radar_view[1], binary_radar_view[2], 0]);
     let mut bit_index = 0;
-    for column in (0..7).step_by(2) {
-        for row in (1..7).step_by(2) {
+    for row in (0..7).step_by(2) {
+        for column in (1..7).step_by(2) {
             let val = ((horiz >> bit_index) & 0b11) as u8;
             radar_view[row][column] = decode_wall(val, "hori");
             bit_index += 2;
@@ -134,10 +135,10 @@ pub fn decode_radar_view_binary(binary_radar_view: Vec<u8>) -> [[char; 7]; 7] {
     }
 
     //Verticaux
-    let vert = u32::from_le_bytes([binary_radar_view[5], binary_radar_view[4], binary_radar_view[3], 0]); 
+    let vert = u32::from_le_bytes([binary_radar_view[3], binary_radar_view[4], binary_radar_view[5], 0]);
     bit_index = 0;
-    for row in (0..7).step_by(2) {
-        for column in (1..7).step_by(2) {
+    for row in (1..7).step_by(2) {
+        for column in (0..7).step_by(2) {
             let val = ((vert >> bit_index) & 0b11) as u8;
             radar_view[row][column] = decode_wall(val, "vert");
             bit_index += 2;
@@ -145,13 +146,28 @@ pub fn decode_radar_view_binary(binary_radar_view: Vec<u8>) -> [[char; 7]; 7] {
     }
 
     //Cells
-    let cells = u64::from_le_bytes([binary_radar_view[10], binary_radar_view[9], binary_radar_view[8], binary_radar_view[7], binary_radar_view[6], 0, 0, 0]); 
+    let cells = u64::from_le_bytes([binary_radar_view[6], binary_radar_view[7], binary_radar_view[8], binary_radar_view[9], binary_radar_view[10], 0, 0, 0]);
     bit_index = 0;
-    for column in (1..7).step_by(2) {
-        for row in (1..7).step_by(2) {
+    for row in (1..7).step_by(2) {
+        for column in (1..7).step_by(2) {
             let val = ((cells >> bit_index) & 0b1111) as u8;
             radar_view[row][column] = decode_cell(val);
             bit_index += 4;
+        }
+    }
+
+    for row in (0..7).step_by(2) {
+        for column in (0..7).step_by(2) {
+
+            if column > 0 && column < 6 {
+                if radar_view[row][column - 1] == '#' && radar_view[row][column + 1] == '#' {
+                    radar_view[row][column] = '#';
+                }
+            } else if column > 0 && radar_view[row][column - 1] == '#' {
+                radar_view[row][column] = '#';
+            } else if column < 6 && radar_view[row][column + 1] == '#' {
+                radar_view[row][column] = '#';
+            }
         }
     }
 

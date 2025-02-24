@@ -1,4 +1,4 @@
-use commun::encodage::{encode_b64, encode_radar_view_binary};
+use commun::{encodage::{encode_b64, encode_radar_view_binary}, utils::debug_binary};
 
 use super::maze::*;
 
@@ -62,6 +62,11 @@ impl Player {
             }
             row.copy_from_slice(&row_to_add);
         }
+
+        println!("{}", radar_view.iter()
+        .map(|row| row.iter().collect::<String>()) // Convertir chaque ligne
+        .collect::<Vec<String>>() // Créer un vecteur de lignes
+        .join("\n"));
 
         let binary_radar_view = encode_radar_view_binary(radar_view);
         
