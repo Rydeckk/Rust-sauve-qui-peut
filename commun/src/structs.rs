@@ -1,12 +1,12 @@
 use super::*;
 
 //Actions
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq)]
 pub enum RelativeDirection {
-    Front,
-    Right,
-    Back,
-    Left,
+    Front, 
+    Right, 
+    Back, 
+    Left
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -15,13 +15,14 @@ pub enum Action {
     SolveChallenge{ answer: String}
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub enum ActionError { 
-    CannotPassThroughWall, 
-    CannotPassThroughOpponent, 
-    NoRunningChallenge, 
-    SolveChallengeFirst, 
-    InvalidChallengeSolution 
+#[derive(Debug, serde::Serialize, Deserialize, PartialEq)]
+pub enum ActionError {
+    CannotPassThroughWall,
+    CannotPassThroughOpponent,
+    NoRunningChallenge,
+    SolveChallengeFirst,
+    InvalidChallengeSolution,
+    PlayerMustBeRescued,
 }
 
 //Challenge
