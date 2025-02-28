@@ -1,6 +1,6 @@
 pub use {
     serde::{Deserialize, Serialize},
-    std::io::{Read, Write},
+    std::io::{self, Read, Write},
     std::net::{TcpListener, TcpStream},
     std::sync::{Arc, Mutex},
     std::thread,
@@ -13,3 +13,5 @@ pub use {
 
 pub mod structs;
 pub mod utils;
+pub mod decodage;
+pub mod encodage;

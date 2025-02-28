@@ -1,3 +1,5 @@
+use commun::encodage::{encode_b64, encode_radar_view_binary};
+
 use super::maze::*;
 
 pub const DISTANCE: i32 = 3;
@@ -39,7 +41,7 @@ impl Player {
     }
 
     pub fn get_radar_view(self) -> String {
-        let mut radar_view: [[&str; SIZE_VIEW]; SIZE_VIEW] = [["#";SIZE_VIEW];SIZE_VIEW];
+        let mut radar_view: [[char; SIZE_VIEW]; SIZE_VIEW] = [['#';SIZE_VIEW];SIZE_VIEW];
 
         for (i, row) in radar_view.iter_mut().enumerate() {
             let maze_y: i32 = (self.position.y - DISTANCE) + (i as i32);
@@ -48,11 +50,11 @@ impl Player {
                 continue;
             }
 
-            let mut row_to_add: Vec<&str> = vec![];
+            let mut row_to_add: Vec<char> = vec![];
             for i in 0..SIZE_VIEW { 
                 let maze_x = (self.position.x - DISTANCE) + (i as i32);
                 if maze_x < 0 || maze_x >= WIDTH as i32 {
-                    row_to_add.push("#");
+                    row_to_add.push('#');
                     continue;
                 } else  {
                     row_to_add.push(MAZE[maze_y as usize][maze_x as usize]);
@@ -61,9 +63,11 @@ impl Player {
             row.copy_from_slice(&row_to_add);
         }
 
-        radar_view.iter()
-            .map(|row| row.join("")) 
-            .collect::<Vec<_>>() 
-            .join("")
+        let binary_radar_view = encode_radar_view_binary(radar_view);
+        
+        let encode_radar_view = encode_b64(&binary_radar_view);
+
+        encode_radar_view
+
     }
 }
