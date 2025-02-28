@@ -1,0 +1,13 @@
+[package]
+name = "maze_engine"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0.218", features = ["derive"] }
+commun = { path = "../commun" }
+serde_json = "1.0.139"
+
+[[bin]]
+name = "test_client"
+path = "src/bin/test_client.rs"

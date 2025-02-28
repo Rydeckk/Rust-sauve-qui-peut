@@ -1,33 +1,35 @@
 use super::*;
 
 //Actions
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq)]
 pub enum RelativeDirection {
-    Front,
-    Right,
-    Back,
-    Left,
+    Front, 
+    Right, 
+    Back, 
+    Left
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Action {
     MoveTo(RelativeDirection),
-    SolveChallenge { answer: String },
+    SolveChallenge{ answer: String}
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub enum ActionError { 
-    CannotPassThroughWall, 
-    CannotPassThroughOpponent, 
-    NoRunningChallenge, 
-    SolveChallengeFirst, 
-    InvalidChallengeSolution 
+#[derive(Debug, serde::Serialize, Deserialize, PartialEq)]
+pub enum ActionError {
+    CannotPassThroughWall,
+    CannotPassThroughOpponent,
+    NoRunningChallenge,
+    SolveChallengeFirst,
+    InvalidChallengeSolution,
+    PlayerMustBeRescued,
 }
 
 //Challenge
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum Challenge {
     SecretModulo(u64),
+    SOS,
 }
 
 //Message
@@ -38,24 +40,24 @@ pub enum JsonWrapper {
     SubscribePlayerResult(SubscribePlayerResult),
     RadarView(String),
     Challenge(Challenge),
-    ActionError(ActionError),
+    ActionError(ActionError)
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum RegistrationError {
-    AlreadyRegistered,
-    InvalidName,
-    InvalidRegistrationToken,
-    TooManyPlayers,
+    AlreadyRegistered, 
+    InvalidName, 
+    InvalidRegistrationToken, 
+    TooManyPlayers
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum RegisterTeamResult {
     Ok {
         expected_players: u8,
-        registration_token: String,
+        registration_token: String
     },
-    Err(RegistrationError),
+    Err(RegistrationError)
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
