@@ -16,7 +16,7 @@ impl Distribution<RelativeDirection> for Standard {
             0 => RelativeDirection::Front,
             1 => RelativeDirection::Right,
             2 => RelativeDirection::Back,
-            _ => RelativeDirection::Left, // Le 3 correspond à Left
+            _ => RelativeDirection::Left,
         }
     }
 }

@@ -6,14 +6,11 @@ use commun::structs::{
     Action, ActionError, Challenge, Hint, JsonWrapper, RegisterTeam, RegisterTeamResult,
     SubscribePlayer, SubscribePlayerResult,
 };
-use std::io::{Result, Write};
-use std::net::TcpStream;
-use std::thread;
-use std::time::Duration;
-use commun::serde_json;
 use maze_engine::challenge::ChallengeManager;
 use maze_engine::navigation::Navigator;
-use maze_engine::radar::RadarView;
+use std::io::{Result, Write};
+use std::net::TcpStream;
+use std::{thread, time};
 
 struct Client {
     stream: TcpStream,
@@ -104,6 +101,10 @@ impl Client {
 
     fn game_loop(&mut self) -> Result<()> {
         loop {
+            // Pause pour éviter que le client aille trop vite
+            let ten_millis = time::Duration::from_millis(10);
+            thread::sleep(ten_millis);
+
             // Récupération du message
             let message = match self.receive_message() {
                 Ok(msg) => msg,
@@ -112,9 +113,6 @@ impl Client {
                     continue;
                 }
             };
-
-            // Traitement du message reçu
-            use base64::decode; // Import nécessaire pour décoder le Base64
 
             match message {
                 JsonWrapper::RadarView(encoded_radar) => {
@@ -158,10 +156,8 @@ impl Client {
                         Hint::Secret(secret) => {
                             println!("Received secret: {}", secret);
                             self.challenge_manager.set_secret(0, secret);
-                        },
-                        _ => {
-                            // Traitement d'autres types d'indices si nécessaire…
                         }
+                        _ => {}
                     }
                 }
                 JsonWrapper::Challenge(challenge) => {
@@ -190,7 +186,6 @@ impl Client {
                     println!("Received action error: {:?}", error);
                     match error {
                         ActionError::CannotPassThroughWall => {
-                            // On suppose que la dernière direction tentée est celle enregistrée à la fin de movement_history.
                             if let Some(last_dir) = self.navigator.movement_history.back().cloned() {
                                 self.navigator.handle_move_failure(last_dir);
                             } else {
