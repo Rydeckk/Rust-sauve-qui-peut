@@ -1,74 +1,8 @@
-use commun::serde_json;
-use serde::{Deserialize, Serialize};
-use std::io::{Read, Result, Write};
+use commun::decodage::decode_message;
+use commun::encodage::encode_message;
+use commun::structs::{Action, JsonWrapper, RegisterTeam, RegisterTeamResult, RelativeDirection, SubscribePlayer, SubscribePlayerResult};
+use std::io::{Result, Write};
 use std::net::TcpStream;
-
-#[derive(Serialize, Deserialize, Debug)]
-struct RegisterTeam {
-    name: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct RegisterTeamWrapper {
-    RegisterTeam: RegisterTeam,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct SubscribePlayer {
-    name: String,
-    registration_token: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct SubscribePlayerWrapper {
-    SubscribePlayer: SubscribePlayer,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum RegistrationError {
-    AlreadyRegistered,
-    InvalidName,
-    InvalidRegistrationToken,
-    TooManyPlayers,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum RegisterTeamResult {
-    Ok {
-        expected_players: u8,
-        registration_token: String,
-    },
-    Err(RegistrationError),
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum SubscribePlayerResult {
-    Ok,
-    Err(RegistrationError),
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum Action {
-    MoveTo(RelativeDirection),
-    SolveChallenge { answer: String },
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum RelativeDirection {
-    Left,
-    Right,
-    Up,
-    Down,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum ActionError {
-    CannotPassThroughWall,
-    CannotPassThroughOpponent,
-    NoRunningChallenge,
-    SolveChallengeFirst,
-    InvalidChallengeSolution,
-}
 
 struct Client {
     stream: TcpStream,
@@ -77,108 +11,85 @@ struct Client {
 impl Client {
     fn new(server: &str) -> Result<Self> {
         let stream = TcpStream::connect(server)?;
+        println!("Connected to server at {}", server);
         Ok(Client { stream })
     }
 
-    fn send_message<T: Serialize>(&mut self, message: &T) -> Result<()> {
-        let json = serde_json::to_string(message)?;
-        let size = (json.len() as u32).to_le_bytes();
-        self.stream.write_all(&size)?;
-        self.stream.write_all(json.as_bytes())?;
+    fn send_message(&mut self, message: &JsonWrapper) -> Result<()> {
+        let encoded_message = encode_message(message)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", e)))?;
+        self.stream.write_all(&encoded_message)?;
+        println!("Sent message: {:?}", message);
         Ok(())
     }
 
-    fn receive_message<T: for<'de> Deserialize<'de>>(&mut self) -> Result<T> {
-        let mut size_buffer = [0; 4];
-        self.stream.read_exact(&mut size_buffer)?;
-        let size = u32::from_le_bytes(size_buffer);
-
-        let mut buffer = vec![0; size as usize];
-        self.stream.read_exact(&mut buffer)?;
-
-        let response = String::from_utf8_lossy(&buffer);
-        let result: T = serde_json::from_str(&response)?;
-        Ok(result)
+    fn receive_message(&mut self) -> Result<JsonWrapper> {
+        let message = decode_message(&mut self.stream)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", e)))?;
+        println!("Received message: {:?}", message);
+        Ok(message)
     }
 
     fn register_team(&mut self, team_name: &str) -> Result<String> {
-        let registration = RegisterTeamWrapper {
-            RegisterTeam: RegisterTeam {
-                name: team_name.to_string(),
-            },
-        };
+        let registration = JsonWrapper::RegisterTeam(RegisterTeam {
+            name: team_name.to_string(),
+        });
 
         self.send_message(&registration)?;
 
-        let result: serde_json::Value = self.receive_message()?;
-        let team_result: RegisterTeamResult =
-            serde_json::from_value(result["RegisterTeamResult"].clone())?;
-
-        match team_result {
-            RegisterTeamResult::Ok {
-                registration_token,
-                expected_players,
-            } => {
-                println!(
-                    "Team registered successfully. Expected players: {}",
-                    expected_players
-                );
+        match self.receive_message()? {
+            JsonWrapper::RegisterTeamResult(RegisterTeamResult::Ok { registration_token, expected_players }) => {
+                println!("Team registered successfully. Expected players: {}", expected_players);
                 Ok(registration_token)
             }
-            RegisterTeamResult::Err(err) => Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Registration error: {:?}", err),
-            )),
+            JsonWrapper::RegisterTeamResult(RegisterTeamResult::Err(err)) => {
+                println!("Registration error: {:?}", err);
+                Err(std::io::Error::new(std::io::ErrorKind::Other, "Registration error"))
+            }
+            _ => Err(std::io::Error::new(std::io::ErrorKind::Other, "Unexpected response")),
         }
     }
 
     fn subscribe_player(&mut self, player_name: &str, token: &str) -> Result<()> {
-        let subscription = SubscribePlayerWrapper {
-            SubscribePlayer: SubscribePlayer {
-                name: player_name.to_string(),
-                registration_token: token.to_string(),
-            },
-        };
+        let subscription = JsonWrapper::SubscribePlayer(SubscribePlayer {
+            name: player_name.to_string(),
+            registration_token: token.to_string(),
+        });
 
         self.send_message(&subscription)?;
 
-        let result: serde_json::Value = self.receive_message()?;
-        let subscribe_result: SubscribePlayerResult =
-            serde_json::from_value(result["SubscribePlayerResult"].clone())?;
-        match subscribe_result {
-            SubscribePlayerResult::Ok => {
+        match self.receive_message()? {
+            JsonWrapper::SubscribePlayerResult(SubscribePlayerResult::Ok) => {
                 println!("Player subscribed successfully");
                 Ok(())
             }
-            SubscribePlayerResult::Err(err) => Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Subscription error: {:?}", err),
-            )),
+            JsonWrapper::SubscribePlayerResult(SubscribePlayerResult::Err(err)) => {
+                println!("Subscription error: {:?}", err);
+                Err(std::io::Error::new(std::io::ErrorKind::Other, "Subscription error"))
+            }
+            _ => Err(std::io::Error::new(std::io::ErrorKind::Other, "Unexpected response")),
         }
     }
 
     fn game_loop(&mut self) -> Result<()> {
         loop {
-            let message: serde_json::Value = self.receive_message()?;
-
-            if let Some(radar) = message.get("RadarView") {
-                println!("Received radar view: {}", radar);
-
-                let action = Action::MoveTo(RelativeDirection::Right);
-                self.send_message(&action)?;
-            } else if let Some(challenge) = message.get("Challenge") {
-                println!("Received challenge: {}", challenge);
-                let action = Action::SolveChallenge {
-                    answer: "solution".to_string(),
-                };
-                self.send_message(&action)?;
-            }
-
-            // Check for action errors
-            if let Ok(error_message) = self.receive_message::<serde_json::Value>() {
-                if let Some(error) = error_message.get("ActionError") {
-                    println!("Received action error: {}", error);
+            match self.receive_message()? {
+                JsonWrapper::RadarView(radar) => {
+                    println!("Received radar view: {}", radar);
+                    let action = JsonWrapper::Action(Action::MoveTo(RelativeDirection::Right));
+                    self.send_message(&action)?;
                 }
+                JsonWrapper::Challenge(challenge) => {
+                    println!("Received challenge: {:?}", challenge);
+                    let action = JsonWrapper::Action(Action::SolveChallenge {
+                        answer: "solution".to_string(),
+                    });
+                    self.send_message(&action)?;
+                }
+                JsonWrapper::ActionError(error) => {
+                    println!("Received action error: {:?}", error);
+                }
+                _ => {}
             }
         }
     }
@@ -189,14 +100,13 @@ fn main() -> Result<()> {
     let server_addr = format!("localhost:{}", SERVER_PORT);
 
     let mut client = Client::new(&server_addr)?;
-    println!("Connected to server at {}", server_addr);
 
     let token = client.register_team("rust_warriors")?;
     println!("Got registration token: {}", token);
 
-    let mut new_lient = Client::new(&server_addr)?;
-    new_lient.subscribe_player("player1", &token)?;
-    new_lient.game_loop()?;
+    let mut new_client = Client::new(&server_addr)?;
+    new_client.subscribe_player("player1", &token)?;
+    new_client.game_loop()?;
 
     Ok(())
 }

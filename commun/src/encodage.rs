@@ -1,7 +1,5 @@
-// encodage.rs
-
 use super::*;
-use crate::{structs::JsonWrapper, utils::debug_binary}; // On suppose que JsonWrapper est défini dans le module structs
+use crate::structs::JsonWrapper;
 
 /// Erreur de protocole regroupant les erreurs d'E/S et de sérialisation.
 #[derive(Debug)]

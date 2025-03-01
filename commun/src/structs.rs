@@ -9,7 +9,7 @@ pub enum RelativeDirection {
     Left
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum Action {
     MoveTo(RelativeDirection),
     SolveChallenge{ answer: String}
@@ -33,14 +33,16 @@ pub enum Challenge {
 }
 
 //Message
-
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum JsonWrapper {
     RegisterTeamResult(RegisterTeamResult),
     SubscribePlayerResult(SubscribePlayerResult),
     RadarView(String),
     Challenge(Challenge),
-    ActionError(ActionError)
+    ActionError(ActionError),
+    RegisterTeam(RegisterTeam),
+    SubscribePlayer(SubscribePlayer),
+    Action(Action),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -67,19 +69,18 @@ pub enum SubscribePlayerResult {
 }
 
 //Team
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct RegisterTeam {
     pub name: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RegisterTeamWrapper {
-    pub RegisterTeam: RegisterTeam,
+    pub register_team: RegisterTeam,
 }
 
 // Subscription
-
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct SubscribePlayer {
     pub name: String,
     pub registration_token: String,
@@ -87,11 +88,10 @@ pub struct SubscribePlayer {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SubscribePlayerWrapper {
-    pub SubscribePlayer: SubscribePlayer,
+    pub subscribe_player: SubscribePlayer,
 }
 
 //Command
-
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Command {
     RegisterTeam {
