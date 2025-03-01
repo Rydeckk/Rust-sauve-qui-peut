@@ -28,7 +28,7 @@ pub enum ActionError {
 //Challenge
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum Challenge {
-    SecretModulo(u64),
+    SecretSumModulo(u64),
     SOS,
 }
 
@@ -43,6 +43,7 @@ pub enum JsonWrapper {
     RegisterTeam(RegisterTeam),
     SubscribePlayer(SubscribePlayer),
     Action(Action),
+    Hint(Hint),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -66,6 +67,14 @@ pub enum RegisterTeamResult {
 pub enum SubscribePlayerResult {
     Ok,
     Err(RegistrationError),
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum Hint {
+    RelativeCompass { angle: f32 },
+    GridSize { columns: u32, rows: u32 },
+    Secret(u64),
+    SOSHelper,
 }
 
 //Team

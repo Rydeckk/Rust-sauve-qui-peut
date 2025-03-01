@@ -28,7 +28,7 @@ name = "client"
 version = "0.1.0"
 dependencies = [
  "commun",
- "serde",
+ "maze_engine",
 ]
 
 [[package]]

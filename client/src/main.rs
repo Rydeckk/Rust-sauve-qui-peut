@@ -1,18 +1,20 @@
 use commun::decodage::decode_message;
 use commun::encodage::encode_message;
-use commun::structs::{Action, JsonWrapper, RegisterTeam, RegisterTeamResult, RelativeDirection, SubscribePlayer, SubscribePlayerResult};
+use commun::structs::{Action, ActionError, Challenge, Hint, JsonWrapper, RegisterTeam, RegisterTeamResult, RelativeDirection, SubscribePlayer, SubscribePlayerResult};
 use std::io::{Result, Write};
 use std::net::TcpStream;
+use maze_engine::challenge::ChallengeManager;
 
 struct Client {
     stream: TcpStream,
+    challenge_manager: ChallengeManager,
 }
 
 impl Client {
     fn new(server: &str) -> Result<Self> {
         let stream = TcpStream::connect(server)?;
         println!("Connected to server at {}", server);
-        Ok(Client { stream })
+        Ok(Client { stream, challenge_manager: ChallengeManager { secrets: Default::default(), sos_active: None } })
     }
 
     fn send_message(&mut self, message: &JsonWrapper) -> Result<()> {
@@ -73,7 +75,15 @@ impl Client {
 
     fn game_loop(&mut self) -> Result<()> {
         loop {
-            match self.receive_message()? {
+            let message = match self.receive_message() {
+                Ok(msg) => msg,
+                Err(e) => {
+                    println!("Error receiving message: {:?}", e);
+                    continue;
+                }
+            };
+
+            match message {
                 JsonWrapper::RadarView(radar) => {
                     println!("Received radar view: {}", radar);
                     let action = JsonWrapper::Action(Action::MoveTo(RelativeDirection::Right));
@@ -81,18 +91,50 @@ impl Client {
                 }
                 JsonWrapper::Challenge(challenge) => {
                     println!("Received challenge: {:?}", challenge);
-                    let action = JsonWrapper::Action(Action::SolveChallenge {
-                        answer: "solution".to_string(),
-                    });
-                    self.send_message(&action)?;
+                    match challenge {
+                        Challenge::SecretSumModulo(modulo) => {
+                            let answer = self.challenge_manager.solve_secret_sum_modulo(modulo);
+                            println!("Solving SecretSumModulo with answer: {}", answer);
+                            let action = JsonWrapper::Action(Action::SolveChallenge {
+                                answer: answer.to_string(),
+                            });
+                            self.send_message(&action)?;
+                        }
+                        Challenge::SOS => {
+                            println!("Received SOS challenge, attempting resolution...");
+                            match self.challenge_manager.resolve_sos(0) {
+                                Ok(_) => {
+                                    println!("SOS resolved successfully!");
+                                }
+                                Err(err) => {
+                                    println!("Failed to resolve SOS: {:?}", err);
+                                }
+                            }
+                        }
+                    }
+                }
+                JsonWrapper::Hint(hint) => {
+                    println!("Received hint: {:?}", hint);
+                    if let Hint::Secret(secret) = hint {
+                        // Stocke le secret reçu pour le challenge `SecretSumModulo`
+                        self.challenge_manager.set_secret(0, secret); // Remplace 0 par l'ID du joueur
+                        println!("Stored secret for SecretSumModulo: {}", secret);
+                    }
                 }
                 JsonWrapper::ActionError(error) => {
                     println!("Received action error: {:?}", error);
+                    if matches!(error, ActionError::SolveChallengeFirst) {
+                        println!("A challenge must be solved first!");
+                    }
                 }
-                _ => {}
+                _ => {
+                    println!("Received unknown message: {:?}", message);
+                }
             }
         }
     }
+
+
 }
 
 fn main() -> Result<()> {
