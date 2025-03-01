@@ -1,13 +1,26 @@
+use rand::distributions::{Distribution, Standard};
 use super::*;
 
 //Actions
-#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RelativeDirection {
     Front, 
     Right, 
     Back, 
     Left
 }
+
+impl Distribution<RelativeDirection> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> RelativeDirection {
+        match rng.gen_range(0..=3) {
+            0 => RelativeDirection::Front,
+            1 => RelativeDirection::Right,
+            2 => RelativeDirection::Back,
+            _ => RelativeDirection::Left, // Le 3 correspond à Left
+        }
+    }
+}
+
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum Action {
@@ -26,7 +39,7 @@ pub enum ActionError {
 }
 
 //Challenge
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum Challenge {
     SecretSumModulo(u64),
     SOS,

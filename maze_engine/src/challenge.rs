@@ -30,8 +30,10 @@ impl ChallengeManager {
     /// - `player_id` : L'identifiant du joueur.
     /// - `secret` : La valeur secrète associée au joueur.
     pub fn set_secret(&mut self, player_id: u32, secret: u64) {
+        println!("[ChallengeManager] Storing secret for player {}: {}", player_id, secret);
         self.secrets.insert(player_id, secret);
     }
+
 
     /// Résout le challenge `SecretSumModulo` en calculant la somme des secrets modulo un nombre donné.
     ///
@@ -40,10 +42,23 @@ impl ChallengeManager {
     ///
     /// # Retourne
     /// La somme des secrets des joueurs modulo `modulo`.
-    pub fn solve_secret_sum_modulo(&self, modulo: u64) -> u64 {
-        let sum: u64 = self.secrets.values().sum();
-        sum % modulo
+    pub fn solve_secret_sum_modulo(&self, modulo: u64, player_ids: &[u32]) -> u64 {
+        let sum: u64 = player_ids
+            .iter()
+            .map(|player_id| self.secrets.get(player_id).copied().unwrap_or(0))
+            .sum();
+
+        let result = sum % modulo;
+
+        println!(
+            "[ChallengeManager] Solving SecretModulo: sum = {}, modulo = {}, result = {}",
+            sum, modulo, result
+        );
+
+        result
     }
+
+
 
     /// Initialise un challenge `SOS` pour un joueur.
     ///
@@ -60,6 +75,8 @@ impl ChallengeManager {
         self.sos_active = Some(player_id);
         Ok(Challenge::SOS)
     }
+
+
 
     /// Résout un `SOS` (un équipier vient secourir le joueur en détresse).
     ///
@@ -93,8 +110,8 @@ mod tests {
         challenge_manager.set_secret(2, 20);
         challenge_manager.set_secret(3, 30);
 
-        assert_eq!(challenge_manager.solve_secret_sum_modulo(10), 0);
-        assert_eq!(challenge_manager.solve_secret_sum_modulo(7), 4);
+        assert_eq!(challenge_manager.solve_secret_sum_modulo(10, &[]), 0);
+        assert_eq!(challenge_manager.solve_secret_sum_modulo(7, &[]), 4);
     }
 
     #[test]

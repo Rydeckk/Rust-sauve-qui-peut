@@ -1,7 +1,8 @@
+use commun::Deserialize;
 use crate::global_map::{GlobalMap, MAP_HEIGHT, MAP_WIDTH};
 use commun::structs::RelativeDirection;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct RadarView {
     walls_horiz: [[bool; 3]; 4],
     walls_vert: [[bool; 4]; 3],

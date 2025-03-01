@@ -38,7 +38,7 @@ pub fn action_result(result: Result<(Player, bool), ActionError>) -> String {
         Ok((player, is_challenge_position)) => {
             if is_challenge_position {
                 info!("Player reached a challenge position");
-                JsonWrapper::Challenge(Challenge::SecretModulo(10))
+                JsonWrapper::Challenge(Challenge::SecretSumModulo(10))
             } else {
                 info!("Sending updated radar view");
                 JsonWrapper::RadarView(player.get_radar_view())

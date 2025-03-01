@@ -1,20 +1,40 @@
-use commun::decodage::decode_message;
+extern crate core;
+
+use commun::decodage::{decode_b64, decode_message, decode_radar_view_binary};
 use commun::encodage::encode_message;
-use commun::structs::{Action, ActionError, Challenge, Hint, JsonWrapper, RegisterTeam, RegisterTeamResult, RelativeDirection, SubscribePlayer, SubscribePlayerResult};
+use commun::structs::{
+    Action, ActionError, Challenge, Hint, JsonWrapper, RegisterTeam, RegisterTeamResult,
+    SubscribePlayer, SubscribePlayerResult,
+};
 use std::io::{Result, Write};
 use std::net::TcpStream;
+use std::thread;
+use std::time::Duration;
+use commun::serde_json;
 use maze_engine::challenge::ChallengeManager;
+use maze_engine::navigation::Navigator;
+use maze_engine::radar::RadarView;
 
 struct Client {
     stream: TcpStream,
     challenge_manager: ChallengeManager,
+    navigator: Navigator,
+    last_challenge: Option<Challenge>, // Stocke le dernier challenge reçu
 }
 
 impl Client {
     fn new(server: &str) -> Result<Self> {
         let stream = TcpStream::connect(server)?;
         println!("Connected to server at {}", server);
-        Ok(Client { stream, challenge_manager: ChallengeManager { secrets: Default::default(), sos_active: None } })
+        Ok(Client {
+            stream,
+            challenge_manager: ChallengeManager {
+                secrets: Default::default(),
+                sos_active: None,
+            },
+            navigator: Navigator::new(),
+            last_challenge: None,
+        })
     }
 
     fn send_message(&mut self, message: &JsonWrapper) -> Result<()> {
@@ -40,7 +60,10 @@ impl Client {
         self.send_message(&registration)?;
 
         match self.receive_message()? {
-            JsonWrapper::RegisterTeamResult(RegisterTeamResult::Ok { registration_token, expected_players }) => {
+            JsonWrapper::RegisterTeamResult(RegisterTeamResult::Ok {
+                                                registration_token,
+                                                expected_players,
+                                            }) => {
                 println!("Team registered successfully. Expected players: {}", expected_players);
                 Ok(registration_token)
             }
@@ -48,7 +71,10 @@ impl Client {
                 println!("Registration error: {:?}", err);
                 Err(std::io::Error::new(std::io::ErrorKind::Other, "Registration error"))
             }
-            _ => Err(std::io::Error::new(std::io::ErrorKind::Other, "Unexpected response")),
+            _ => Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Unexpected response",
+            )),
         }
     }
 
@@ -69,12 +95,16 @@ impl Client {
                 println!("Subscription error: {:?}", err);
                 Err(std::io::Error::new(std::io::ErrorKind::Other, "Subscription error"))
             }
-            _ => Err(std::io::Error::new(std::io::ErrorKind::Other, "Unexpected response")),
+            _ => Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Unexpected response",
+            )),
         }
     }
 
     fn game_loop(&mut self) -> Result<()> {
         loop {
+            // Récupération du message
             let message = match self.receive_message() {
                 Ok(msg) => msg,
                 Err(e) => {
@@ -83,58 +113,119 @@ impl Client {
                 }
             };
 
+            // Traitement du message reçu
+            use base64::decode; // Import nécessaire pour décoder le Base64
+
             match message {
-                JsonWrapper::RadarView(radar) => {
-                    println!("Received radar view: {}", radar);
-                    let action = JsonWrapper::Action(Action::MoveTo(RelativeDirection::Right));
-                    self.send_message(&action)?;
+                JsonWrapper::RadarView(encoded_radar) => {
+                    // Décodage Base64 via la fonction interne
+                    let radar_bytes = match decode_b64(&encoded_radar) {
+                        Ok(bytes) => bytes,
+                        Err(e) => {
+                            println!("Erreur de décodage Base64 du RadarView: {}", e);
+                            return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, e));
+                        }
+                    };
+
+                    // Décodage en structure RadarView
+                    let radar_view_array = decode_radar_view_binary(radar_bytes);
+
+                    println!("Received RadarView:");
+                    for row in radar_view_array.iter() {
+                        println!("{}", row.iter().collect::<String>());
+                    }
+
+                    // Sélection du prochain déplacement
+                    let best_move = self.navigator.choose_next_move(&radar_view_array);
+                    println!("[Client] Moving in direction: {:?}", best_move);
+                    self.navigator.display_memory_map();
+
+                    // Envoi de l'action au serveur
+                    if let Err(e) = self.send_message(&JsonWrapper::Action(Action::MoveTo(best_move))) {
+                        println!("Erreur d'envoi de message: {}", e);
+                        return Err(e);
+                    }
+                }
+
+
+                JsonWrapper::Hint(hint) => {
+                    println!("Received hint: {:?}", hint);
+                    match hint {
+                        Hint::RelativeCompass { angle } => {
+                            println!("Stored compass hint: {}°", angle);
+                            // Traitement du boussole…
+                        },
+                        Hint::Secret(secret) => {
+                            println!("Received secret: {}", secret);
+                            self.challenge_manager.set_secret(0, secret);
+                        },
+                        _ => {
+                            // Traitement d'autres types d'indices si nécessaire…
+                        }
+                    }
                 }
                 JsonWrapper::Challenge(challenge) => {
                     println!("Received challenge: {:?}", challenge);
+                    self.last_challenge = Some(challenge.clone());
+
                     match challenge {
                         Challenge::SecretSumModulo(modulo) => {
-                            let answer = self.challenge_manager.solve_secret_sum_modulo(modulo);
-                            println!("Solving SecretSumModulo with answer: {}", answer);
-                            let action = JsonWrapper::Action(Action::SolveChallenge {
+                            let answer =
+                                self.challenge_manager.solve_secret_sum_modulo(modulo, &[0]);
+                            println!("[Client] Solving SecretModulo with answer: {}", answer);
+                            self.send_message(&JsonWrapper::Action(Action::SolveChallenge {
                                 answer: answer.to_string(),
-                            });
-                            self.send_message(&action)?;
+                            }))?;
                         }
                         Challenge::SOS => {
                             println!("Received SOS challenge, attempting resolution...");
                             match self.challenge_manager.resolve_sos(0) {
-                                Ok(_) => {
-                                    println!("SOS resolved successfully!");
-                                }
-                                Err(err) => {
-                                    println!("Failed to resolve SOS: {:?}", err);
-                                }
+                                Ok(_) => println!("SOS resolved successfully!"),
+                                Err(err) => println!("Failed to resolve SOS: {:?}", err),
                             }
                         }
                     }
                 }
-                JsonWrapper::Hint(hint) => {
-                    println!("Received hint: {:?}", hint);
-                    if let Hint::Secret(secret) = hint {
-                        // Stocke le secret reçu pour le challenge `SecretSumModulo`
-                        self.challenge_manager.set_secret(0, secret); // Remplace 0 par l'ID du joueur
-                        println!("Stored secret for SecretSumModulo: {}", secret);
-                    }
-                }
                 JsonWrapper::ActionError(error) => {
                     println!("Received action error: {:?}", error);
-                    if matches!(error, ActionError::SolveChallengeFirst) {
-                        println!("A challenge must be solved first!");
+                    match error {
+                        ActionError::CannotPassThroughWall => {
+                            // On suppose que la dernière direction tentée est celle enregistrée à la fin de movement_history.
+                            if let Some(last_dir) = self.navigator.movement_history.back().cloned() {
+                                self.navigator.handle_move_failure(last_dir);
+                            } else {
+                                println!("No recorded move to revert.");
+                            }
+                        },
+                        ActionError::SolveChallengeFirst => {
+                            println!("A challenge must be solved first!");
+                        },
+                        ActionError::InvalidChallengeSolution => {
+                            println!("Invalid solution, retrying challenge...");
+                            if let Some(last_challenge) = &self.last_challenge {
+                                match last_challenge {
+                                    Challenge::SecretSumModulo(modulo) => {
+                                        let answer = self.challenge_manager.solve_secret_sum_modulo(*modulo, &[0]);
+                                        println!("Retrying SecretModulo with new answer: {}", answer);
+                                        self.send_message(&JsonWrapper::Action(Action::SolveChallenge {
+                                            answer: answer.to_string(),
+                                        }))?;
+                                    }
+                                    _ => {
+                                        println!("No retry strategy for this challenge.");
+                                    }
+                                }
+                            } else {
+                                println!("No challenge stored, cannot retry.");
+                            }
+                        },
+                        _ => {}
                     }
                 }
-                _ => {
-                    println!("Received unknown message: {:?}", message);
-                }
+                _ => {}
             }
         }
     }
-
-
 }
 
 fn main() -> Result<()> {

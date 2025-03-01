@@ -6,3 +6,7 @@ edition = "2021"
 [dependencies]
 commun = { path = "../commun" }
 maze_engine = { path = "../maze_engine" }
+serde_json = "1.0.139"
+anyhow = "1.0.96"
+base64 = "0.22.1"
+bincode = "2.0.0-rc.3"
