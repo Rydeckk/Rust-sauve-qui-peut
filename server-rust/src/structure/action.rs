@@ -40,7 +40,7 @@ impl ActionFunction for Action {
             },
         };
 
-        if let Err(e) = send_to_client(stream, message) {
+        if let Err(e) = send_to_client(&stream, message) {
             error!("Failed to send response to client: {}", e);
         }
     }
@@ -65,7 +65,7 @@ impl ActionFunction for Action {
             },
         };
 
-        if let Err(e) = send_to_client(stream, message) {
+        if let Err(e) = send_to_client(&stream, message) {
             error!("Failed to send response to client: {}", e);
         }
     }

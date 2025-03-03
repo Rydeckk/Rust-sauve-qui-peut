@@ -9,7 +9,7 @@ use structure::{team::TeamManager, player::Player, challenge::ChallengePosition,
 use tracing::{info, error};
 use commun::serde_json;
 
-fn send_to_client(mut stream: TcpStream, message: String) -> std::io::Result<()> {
+fn send_to_client(mut stream: &TcpStream, message: String) -> std::io::Result<()> {
     let message_bytes = message.as_bytes();
     let n = message.len() as u32;
     let bytes = n.to_le_bytes();
@@ -57,8 +57,8 @@ fn handle_client(mut stream: TcpStream, team_manager: Arc<Mutex<TeamManager>>, p
 }
 
 fn inner_main() -> std::io::Result<()> {
-    let listener = TcpListener::bind("127.0.0.1:8000")?;
-    info!("Server listening on 127.0.0.1:8000");
+    let listener = TcpListener::bind("127.0.0.1:8778")?;
+    info!("Server listening on 127.0.0.1:8778");
 
     let team_manager = Arc::new(Mutex::new(TeamManager::new()));
     let player = Arc::new(Mutex::new(Player::new("Player1".to_string())));

@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::net::TcpStream;
 use commun::{utils::generate_acess_key, structs::RegistrationError};
 use crate::send_to_client;
+use crate::structure::message::radar_view;
 use super::message::{register_team_result, subscribe_player_result };
 use super::player::Player;
 use tracing::{info, warn, error};
@@ -85,7 +86,7 @@ impl TeamCommand {
             }
         };
 
-        if let Err(e) = send_to_client(stream, message) {
+        if let Err(e) = send_to_client(&stream, message) {
             error!("Failed to send team creation response: {}", e);
         }
     }
@@ -97,9 +98,12 @@ impl TeamCommand {
             name_player, registration_token
         );
 
+        let mut message_radar_view = String::from("");
+
         let message = match manager.register_player(registration_token.clone(), name_player.clone()) {
             Ok(player) => {
                 info!("Player '{}' successfully subscribed", name_player);
+                message_radar_view = radar_view(player.clone());
                 subscribe_player_result (Ok(player))
             }
             Err(error) => {
@@ -108,9 +112,11 @@ impl TeamCommand {
             }
         };
 
-        if let Err(e) = send_to_client(stream, message) {
+        if let Err(e) = send_to_client(&stream, message) {
             error!("Failed to send player registration response: {}", e);
         }
+
+        send_to_client(&stream, message_radar_view);
     }
 
     pub fn process(command: TeamCommand, stream: TcpStream, team_manager: Arc<Mutex<TeamManager>>) {

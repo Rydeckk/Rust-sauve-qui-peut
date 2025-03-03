@@ -52,3 +52,9 @@ pub fn action_result(result: Result<(Player, bool), ActionError>) -> String {
 
     serde_json::to_string(&message_wrapped).unwrap()
 }
+
+pub fn radar_view(player: Player) -> String {
+    let message_wrapped = JsonWrapper::RadarView(player.get_radar_view());
+
+    serde_json::to_string(&message_wrapped).unwrap()
+}
