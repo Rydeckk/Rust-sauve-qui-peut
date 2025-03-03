@@ -10,17 +10,21 @@ use maze_engine::challenge::ChallengeManager;
 use maze_engine::navigation::Navigator;
 use std::io::{Result, Write};
 use std::net::TcpStream;
-use std::{thread, time};
+
+use maze_engine::scoring::ScoreManager;
 
 struct Client {
     stream: TcpStream,
     challenge_manager: ChallengeManager,
     navigator: Navigator,
-    last_challenge: Option<Challenge>, // Stocke le dernier challenge reçu
+    last_challenge: Option<Challenge>,
+    score_manager: ScoreManager,
+    player_id: u32,
+    compass_hint: Option<f32>,
 }
 
 impl Client {
-    fn new(server: &str) -> Result<Self> {
+    fn new(server: &str, team_size: u32) -> Result<Self> {
         let stream = TcpStream::connect(server)?;
         println!("Connected to server at {}", server);
         Ok(Client {
@@ -31,6 +35,9 @@ impl Client {
             },
             navigator: Navigator::new(),
             last_challenge: None,
+            score_manager: ScoreManager::new(team_size),
+            player_id: 0,
+            compass_hint: None,
         })
     }
 
@@ -61,7 +68,10 @@ impl Client {
                                                 registration_token,
                                                 expected_players,
                                             }) => {
-                println!("Team registered successfully. Expected players: {}", expected_players);
+                println!(
+                    "Team registered successfully. Expected players: {}",
+                    expected_players
+                );
                 Ok(registration_token)
             }
             JsonWrapper::RegisterTeamResult(RegisterTeamResult::Err(err)) => {
@@ -101,16 +111,23 @@ impl Client {
 
     fn game_loop(&mut self) -> Result<()> {
         loop {
-            // Pause pour éviter que le client aille trop vite
-            let ten_millis = time::Duration::from_millis(10);
-            thread::sleep(ten_millis);
+            // Rajouter un thread:sleep pour ralentir l'exécution en cas de besoin
+            // let sleeping_time = time::Duration::from_millis(100);
+            // thread::sleep(sleeping_time);
 
             // Récupération du message
             let message = match self.receive_message() {
                 Ok(msg) => msg,
                 Err(e) => {
-                    println!("Error receiving message: {:?}", e);
-                    continue;
+                    // Si la connexion est fermée (labyrinthe fini), afficher le score final
+                    if e.kind() == std::io::ErrorKind::ConnectionAborted || e.kind() == std::io::ErrorKind::UnexpectedEof {
+                        let final_score = self.score_manager.compute_score();
+                        println!("Labyrinthe fini! Score final: {}", final_score);
+                        continue;
+                    } else {
+                        println!("Error receiving message: {:?}", e);
+                        continue;
+                    }
                 }
             };
 
@@ -127,11 +144,6 @@ impl Client {
 
                     // Décodage en structure RadarView
                     let radar_view_array = decode_radar_view_binary(radar_bytes);
-
-                    println!("Received RadarView:");
-                    for row in radar_view_array.iter() {
-                        println!("{}", row.iter().collect::<String>());
-                    }
 
                     // Sélection du prochain déplacement
                     let best_move = self.navigator.choose_next_move(&radar_view_array);
@@ -151,7 +163,8 @@ impl Client {
                     match hint {
                         Hint::RelativeCompass { angle } => {
                             println!("Stored compass hint: {}°", angle);
-                            // Traitement du boussole…
+                            // Traitement de l'indice boussole
+                            // self.compass_hint = Some(angle);
                         },
                         Hint::Secret(secret) => {
                             println!("Received secret: {}", secret);
@@ -227,12 +240,12 @@ fn main() -> Result<()> {
     const SERVER_PORT: u16 = 8778;
     let server_addr = format!("localhost:{}", SERVER_PORT);
 
-    let mut client = Client::new(&server_addr)?;
+    let mut client = Client::new(&server_addr, 3)?;
 
     let token = client.register_team("rust_warriors")?;
     println!("Got registration token: {}", token);
 
-    let mut new_client = Client::new(&server_addr)?;
+    let mut new_client = Client::new(&server_addr, 3)?;
     new_client.subscribe_player("player1", &token)?;
     new_client.game_loop()?;
 

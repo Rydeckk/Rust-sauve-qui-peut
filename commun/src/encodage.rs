@@ -113,7 +113,7 @@ pub fn encode_radar_view_binary(radar_view: [[char; 7]; 7]) -> Vec<u8> {
     fn encode_cell(c: char) -> u8 {
         match c {
             ' ' => 0b0000,
-            '*' => 0b1000,
+            'G' => 0b1000,
             '#' => 0b1111,
             _ => 0b1111
         }

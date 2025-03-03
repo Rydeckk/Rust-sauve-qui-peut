@@ -117,7 +117,7 @@ pub fn decode_radar_view_binary(binary_radar_view: Vec<u8>) -> [[char; 7]; 7] {
     fn decode_cell(value: u8) -> char {
         match value {
             0b0000 => ' ',
-            0b1000 => '*',
+            0b1000 => 'G',
             0b1111 => '#',
             _ => '#',
         }

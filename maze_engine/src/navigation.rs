@@ -10,7 +10,7 @@ const MAX_FAILS: usize = 3; // Nombre maximum d'échecs avant de bannir une dire
 /// La structure `Navigator` s'appuie sur plusieurs champs internes pour éviter de revenir sur ses pas
 /// lorsque d'autres options sont disponibles, et pour gérer les échecs de déplacement.
 pub struct Navigator {
-    last_direction: Option<RelativeDirection>,
+    pub last_direction: Option<RelativeDirection>,
     /// Historique des déplacements effectués.
     pub movement_history: VecDeque<RelativeDirection>,
     /// Ensemble des positions déjà visitées (représentées par des coordonnées `(x, y)`).
@@ -135,13 +135,32 @@ impl Navigator {
     ///
     /// * `direction` - La direction dans laquelle se déplacer.
     /// * `new_pos` - La nouvelle position calculée après déplacement.
-    fn execute_move(&mut self, direction: RelativeDirection, new_pos: (i32, i32)) {
+    pub fn execute_move(&mut self, direction: RelativeDirection, new_pos: (i32, i32)) {
         println!("[Navigator] Executing move {:?} to {:?}", direction, new_pos);
         self.banned_directions.remove(&direction);
         self.fail_count.remove(&direction);
         self.movement_history.push_back(direction);
         self.current_position = new_pos;
         self.visited_positions.insert(new_pos);
+    }
+
+    /// Convertit un angle (en degrés) en une Option<RelativeDirection>.
+    /// - Entre -45° et 45° -> Front
+    /// - Entre 45° et 135° -> Right
+    /// - Au-delà de 135° (ou en dessous de -135°) -> Back
+    /// - Entre -135° et -45° -> Left
+    pub fn compute_direction_from_angle(angle: f32) -> Option<RelativeDirection> {
+        if angle >= -45.0 && angle <= 45.0 {
+            Some(RelativeDirection::Front)
+        } else if angle > 45.0 && angle < 135.0 {
+            Some(RelativeDirection::Right)
+        } else if angle >= 135.0 || angle <= -135.0 {
+            Some(RelativeDirection::Back)
+        } else if angle < -45.0 && angle > -135.0 {
+            Some(RelativeDirection::Left)
+        } else {
+            None
+        }
     }
 
     /// Gère le cas où aucun déplacement valide n'est possible en effectuant un demi-tour.
@@ -221,7 +240,7 @@ impl Navigator {
     /// # Retourne
     ///
     /// `true` si la case correspondante est ouverte, sinon `false`.
-    fn is_open(&self, radar_view: &[[char; 7]; 7], direction: RelativeDirection) -> bool {
+    pub fn is_open(&self, radar_view: &[[char; 7]; 7], direction: RelativeDirection) -> bool {
         match direction {
             RelativeDirection::Front => radar_view[1][3] == ' ',
             RelativeDirection::Right => radar_view[3][5] == ' ',
@@ -240,7 +259,7 @@ impl Navigator {
     /// # Retourne
     ///
     /// Une nouvelle position `(x, y)` après déplacement.
-    fn calculate_new_position((x, y): (i32, i32), direction: RelativeDirection) -> (i32, i32) {
+    pub fn calculate_new_position((x, y): (i32, i32), direction: RelativeDirection) -> (i32, i32) {
         let (dx, dy) = Self::delta(direction);
         (x + dx, y + dy)
     }
@@ -328,5 +347,15 @@ mod tests {
         assert_eq!(navigator.current_position, (0, 0));
         // La direction Right devrait être bannie
         assert!(navigator.banned_directions.contains(&RelativeDirection::Right));
+    }
+
+    #[test]
+    fn test_compute_direction_from_angle() {
+        assert_eq!(Navigator::compute_direction_from_angle(0.0), Some(RelativeDirection::Front));
+        assert_eq!(Navigator::compute_direction_from_angle(30.0), Some(RelativeDirection::Front));
+        assert_eq!(Navigator::compute_direction_from_angle(90.0), Some(RelativeDirection::Right));
+        assert_eq!(Navigator::compute_direction_from_angle(150.0), Some(RelativeDirection::Back));
+        assert_eq!(Navigator::compute_direction_from_angle(-150.0), Some(RelativeDirection::Back));
+        assert_eq!(Navigator::compute_direction_from_angle(-90.0), Some(RelativeDirection::Left));
     }
 }
