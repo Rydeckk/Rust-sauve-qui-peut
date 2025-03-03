@@ -1,22 +1,38 @@
-use crate::radar::RadarView;
 use std::collections::HashSet;
 
-/// Largeur et hauteur maximales de la carte.
+/// Largeur maximale de la carte.
 pub const MAP_WIDTH: usize = 20;
+/// Hauteur maximale de la carte.
 pub const MAP_HEIGHT: usize = 20;
 
 /// Liste des caractères représentant un mur.
 const WALLS: [char; 3] = ['•', '-', '|'];
 
-/// **Carte globale du labyrinthe**, mise à jour en fonction des `RadarView`.
+/// **Carte globale du labyrinthe**.
+///
+/// Cette structure permet de représenter la carte globale en tenant compte des mises à jour reçues via des
+/// `RadarView`. Elle stocke une grille de caractères ainsi qu'un ensemble des positions déjà explorées.
 pub struct GlobalMap {
-    grid: Vec<Vec<char>>,           // Carte stockant les murs et passages
-    explored: HashSet<(usize, usize)>, // Liste des cases déjà visitées
-    pub(crate) player_pos: (usize, usize), // Dernière position connue du joueur
+    grid: Vec<Vec<char>>,             // Carte stockant les murs et passages.
+    explored: HashSet<(usize, usize)>, // Ensemble des cases déjà explorées.
 }
 
 impl GlobalMap {
-    /// **Crée une carte vide remplie de `#` (zones inconnues).**
+    /// Crée une carte vide remplie de `#` (zones inconnues) et place le joueur à la position de départ.
+    ///
+    /// # Arguments
+    ///
+    /// * `start_x` - Position horizontale de départ.
+    /// * `start_y` - Position verticale de départ.
+    ///
+    /// # Exemples
+    ///
+    /// ```
+    /// use maze_engine::global_map::GlobalMap;
+    ///
+    /// let map = GlobalMap::new(3, 4);
+    /// // La position initiale du joueur est (3, 4).
+    /// ```
     pub fn new(start_x: usize, start_y: usize) -> Self {
         let mut grid = vec![vec!['#'; MAP_WIDTH]; MAP_HEIGHT];
         grid[start_y][start_x] = 'P'; // Position initiale du joueur
@@ -24,71 +40,44 @@ impl GlobalMap {
         Self {
             grid,
             explored: HashSet::new(),
-            player_pos: (start_x, start_y),
         }
     }
 
-    /// **Met à jour la carte en fonction d'une `RadarView`.**
+    /// Vérifie si une case a déjà été explorée.
     ///
-    /// - Déduit la position actuelle du joueur.
-    /// - Marque les murs et les passages explorés.
-    /// - Ajoute les indices (`H`) et la cible (`G`).
-    pub fn update_from_radar(&mut self, radar: &RadarView, direction: Option<(isize, isize)>) {
-        // Déplacement estimé du joueur
-        if let Some((dx, dy)) = direction {
-            let new_x = (self.player_pos.0 as isize + dx) as usize;
-            let new_y = (self.player_pos.1 as isize + dy) as usize;
-            self.player_pos = (new_x, new_y);
-        }
-
-        // Positionner la vue radar autour du joueur
-        let start_x = self.player_pos.0 as isize - 1;
-        let start_y = self.player_pos.1 as isize - 1;
-
-        for dy in 0..3 {
-            for dx in 0..3 {
-                let global_x = start_x + dx as isize;
-                let global_y = start_y + dy as isize;
-
-                if global_x < 0 || global_y < 0 || global_x as usize >= MAP_WIDTH || global_y as usize >= MAP_HEIGHT {
-                    continue;
-                }
-
-                let gx = global_x as usize;
-                let gy = global_y as usize;
-                let cell = radar.get_cell(dx, dy);
-
-                // Mise à jour des murs
-                if radar.is_wall_horizontal(dy, dx) {
-                    self.set_wall(gx, gy, '-');
-                }
-                if radar.is_wall_vertical(dy, dx) {
-                    self.set_wall(gx, gy, '|');
-                }
-
-                // Mise à jour des zones explorées
-                if cell & 0b1000 != 0 {
-                    self.set_goal(gx, gy);
-                } else if cell & 0b0100 != 0 {
-                    self.set_hint(gx, gy);
-                } else {
-                    self.set_explored(gx, gy, ' ');
-                }
-            }
-        }
-    }
-
-    /// **Vérifie si une case a déjà été explorée.**
+    /// # Arguments
+    ///
+    /// * `x` - Position horizontale.
+    /// * `y` - Position verticale.
+    ///
+    /// # Retourne
+    ///
+    /// `true` si la case (x, y) est dans l'ensemble des cases explorées, sinon `false`.
     pub fn is_visited(&self, x: usize, y: usize) -> bool {
         self.explored.contains(&(x, y))
     }
 
-    /// **Vérifie si une case est un mur.**
+    /// Vérifie si une case contient un mur.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - Position horizontale.
+    /// * `y` - Position verticale.
+    ///
+    /// # Retourne
+    ///
+    /// `true` si le caractère de la case correspond à l'un des caractères de mur définis dans `WALLS`, sinon `false`.
     pub fn is_wall(&self, x: usize, y: usize) -> bool {
         WALLS.contains(&self.grid[y][x])
     }
 
-    /// **Ajoute un mur à la carte.**
+    /// Ajoute un mur à la carte et marque la case comme explorée.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - Position horizontale.
+    /// * `y` - Position verticale.
+    /// * `wall_type` - Caractère représentant le type de mur (ex. '-' ou '|').
     pub fn set_wall(&mut self, x: usize, y: usize, wall_type: char) {
         if x < MAP_WIDTH && y < MAP_HEIGHT {
             self.grid[y][x] = wall_type;
@@ -96,7 +85,13 @@ impl GlobalMap {
         }
     }
 
-    /// **Marque une case comme explorée.**
+    /// Marque une case comme explorée et y assigne un contenu.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - Position horizontale.
+    /// * `y` - Position verticale.
+    /// * `cell_content` - Caractère indiquant le contenu de la case (ex. ' ' pour vide).
     pub fn set_explored(&mut self, x: usize, y: usize, cell_content: char) {
         if x < MAP_WIDTH && y < MAP_HEIGHT {
             self.grid[y][x] = cell_content;
@@ -104,21 +99,43 @@ impl GlobalMap {
         }
     }
 
-    /// **Ajoute un indice (`H`) sur la carte.**
-    pub fn set_hint(&mut self, x: usize, y: usize) {
-        self.grid[y][x] = 'H';
-    }
-
-    /// **Ajoute la cible (`G`) sur la carte.**
-    pub fn set_goal(&mut self, x: usize, y: usize) {
-        self.grid[y][x] = 'G';
-    }
-
-    /// **Affiche la carte globale.**
+    /// Affiche la carte globale dans la console.
+    ///
+    /// Chaque ligne de la carte est affichée sous forme de chaîne de caractères.
     pub fn print_map(&self) {
         println!("Carte globale :");
         for row in &self.grid {
             println!("{}", row.iter().collect::<String>());
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_set_wall_and_is_wall() {
+        let mut map = GlobalMap::new(0, 0);
+        map.set_wall(2, 3, '-');
+        assert!(map.is_wall(2, 3));
+        assert!(map.is_visited(2, 3));
+    }
+
+    #[test]
+    fn test_set_explored_and_is_visited() {
+        let mut map = GlobalMap::new(0, 0);
+        map.set_explored(5, 5, ' ');
+        assert!(map.is_visited(5, 5));
+        // La case ne doit pas être considérée comme mur
+        assert!(!map.is_wall(5, 5));
+    }
+
+    #[test]
+    fn test_print_map() {
+        let mut map = GlobalMap::new(0, 0);
+        map.set_explored(1, 1, ' ');
+        map.set_wall(2, 2, '-');
+        map.print_map();
     }
 }

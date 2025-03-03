@@ -1,7 +1,8 @@
+use rand::distributions::{Distribution, Standard};
 use super::*;
 
 //Actions
-#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RelativeDirection {
     Front, 
     Right, 
@@ -9,7 +10,19 @@ pub enum RelativeDirection {
     Left
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+impl Distribution<RelativeDirection> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> RelativeDirection {
+        match rng.gen_range(0..=3) {
+            0 => RelativeDirection::Front,
+            1 => RelativeDirection::Right,
+            2 => RelativeDirection::Back,
+            _ => RelativeDirection::Left,
+        }
+    }
+}
+
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum Action {
     MoveTo(RelativeDirection),
     SolveChallenge{ answer: String}
@@ -26,21 +39,24 @@ pub enum ActionError {
 }
 
 //Challenge
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum Challenge {
-    SecretModulo(u64),
+    SecretSumModulo(u64),
     SOS,
 }
 
 //Message
-
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum JsonWrapper {
     RegisterTeamResult(RegisterTeamResult),
     SubscribePlayerResult(SubscribePlayerResult),
     RadarView(String),
     Challenge(Challenge),
-    ActionError(ActionError)
+    ActionError(ActionError),
+    RegisterTeam(RegisterTeam),
+    SubscribePlayer(SubscribePlayer),
+    Action(Action),
+    Hint(Hint),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -66,20 +82,27 @@ pub enum SubscribePlayerResult {
     Err(RegistrationError),
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum Hint {
+    RelativeCompass { angle: f32 },
+    GridSize { columns: u32, rows: u32 },
+    Secret(u64),
+    SOSHelper,
+}
+
 //Team
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct RegisterTeam {
     pub name: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RegisterTeamWrapper {
-    pub RegisterTeam: RegisterTeam,
+    pub register_team: RegisterTeam,
 }
 
 // Subscription
-
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct SubscribePlayer {
     pub name: String,
     pub registration_token: String,
@@ -87,11 +110,10 @@ pub struct SubscribePlayer {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SubscribePlayerWrapper {
-    pub SubscribePlayer: SubscribePlayer,
+    pub subscribe_player: SubscribePlayer,
 }
 
 //Command
-
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Command {
     RegisterTeam {

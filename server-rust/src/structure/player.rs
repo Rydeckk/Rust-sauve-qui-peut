@@ -1,6 +1,7 @@
 use commun::encodage::{encode_b64, encode_radar_view_binary};
 
 use super::maze::*;
+use tracing::{info};
 
 pub const DISTANCE: i32 = 3;
 pub const SIZE_VIEW: usize = 7;
@@ -14,6 +15,7 @@ pub struct Player {
 
 impl Player {
     pub fn new(name: String) -> Self {
+        info!("Creating new player: {}", name);
         Self {
             name: name,
             position: Point {
@@ -24,11 +26,15 @@ impl Player {
         }
     }
 
-    pub fn get_position(self) -> Point {
-        self.position
+    pub fn get_position(&self) -> Point {
+        self.position.clone()
     }
 
     pub fn set_position(&mut self, new_position: Point) {
+        info!(
+            "Updating player position from x={}, y={} to x={}, y={}",
+            self.position.x, self.position.y, new_position.x, new_position.y
+        );
         self.position = new_position;
     }
 
@@ -37,10 +43,18 @@ impl Player {
     }
 
     pub fn set_is_challenge_actif(&mut self, is_challenge_actif: bool) {
+        info!(
+            "Setting challenge active status to {} for player {}",
+            is_challenge_actif, self.name
+        );
         self.challenge_actif = is_challenge_actif;
     }
 
     pub fn get_radar_view(self) -> String {
+        info!(
+            "Generating radar view for player at position x={}, y={}",
+            self.position.x, self.position.y
+        );
         let mut radar_view: [[char; SIZE_VIEW]; SIZE_VIEW] = [['#';SIZE_VIEW];SIZE_VIEW];
 
         for (i, row) in radar_view.iter_mut().enumerate() {
@@ -64,7 +78,7 @@ impl Player {
         }
 
         let binary_radar_view = encode_radar_view_binary(radar_view);
-        
+
         let encode_radar_view = encode_b64(&binary_radar_view);
 
         encode_radar_view
